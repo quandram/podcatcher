@@ -51,14 +51,24 @@ class podcatcher:
             podPublishedOn = self.GetUTCDate(pod.published)
 
             if  podPublishedOn > lastProcessed and (self.maxEpisodesToDownload == 0 or podsDownloaded < self.maxEpisodesToDownload):
-                podLastDownloaded = podPublishedOn
                 print (".", end = '')
-                open(os.path.join(self.podCatcherConfig[configKeys.OUTPUT], self.configSection, self.GetPodFileName(pod)), "wb").write(
-                    requests.get(pod.links[1]["href"], allow_redirects=True).content)
 
-                podsDownloaded += 1
+                try:
+                    req = requests.get(pod.links[1]["href"], allow_redirects=True, timeout=(3.05, 27))
+                    open(os.path.join(self.podCatcherConfig[configKeys.OUTPUT], self.configSection, self.GetPodFileName(pod)),
+                        "wb").write(req.content)
+                    podLastDownloaded = podPublishedOn
+                    podsDownloaded += 1
+                    if self.maxEpisodesToDownload > 0 and podsDownloaded == self.maxEpisodesToDownload:
+                        break
 
-                if self.maxEpisodesToDownload > 0 and podsDownloaded == self.maxEpisodesToDownload:
+                except requests.exceptions.ConnectionError:
+                    print ("\nError: Request timedout: %s" % pod.title)
+                    break
+                except Exception as e:
+                    print ("\nError: catching pod: %s" % pod.title)
+                    print(type(e))
+                    print(e)
                     break
 
         print ("\n%s: %d episodes downloaded" % (self.configSection, podsDownloaded ))
