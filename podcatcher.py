@@ -54,8 +54,9 @@ class podcatcher:
                 print (".", end = '')
 
                 try:
-                    req = requests.get(pod.links[1]["href"], allow_redirects=True, timeout=(3.05, 27))
-                    open(os.path.join(self.podCatcherConfig[configKeys.OUTPUT], self.configSection, self.get_pod_file_name(pod)),
+                    podAudioLink = self.get_pod_audio_link(pod)
+                    req = requests.get(podAudioLink, allow_redirects=True, timeout=(3.05, 27))
+                    open(os.path.join(self.podCatcherConfig[configKeys.OUTPUT], self.configSection, self.get_pod_file_name(pod) + "." + self.get_pod_file_extension(podAudioLink)),
                         "wb").write(req.content)
                     podLastDownloaded = podPublishedOn
                     podsDownloaded += 1
@@ -74,15 +75,21 @@ class podcatcher:
         print (" | %d episodes downloaded\n" % podsDownloaded )
         return podLastDownloaded
 
+    def get_pod_audio_link(self, pod):
+        for link in pod.links:
+            if link.type == "audio/mpeg":
+                return link["href"]
+        print ("\nError: Finding Audio Link: %s" % pod.title)
+
     def get_pod_file_name(self, pod):
         podPublishedOn = self.get_utc_date(pod.published)
-        podExtension = self.get_pod_file_extension(pod)
+        return sanitize(podPublishedOn.strftime("%Y-%m-%dT%H-%M-%SZ") + "_" + self.configSection + "_" + pod.title)
+
+    def get_pod_file_extension(self, podUrl):
+        podExtension = podUrl.rpartition(".")[-1]
         if "?" in podExtension:
             podExtension = podExtension.rpartition("?")[0]
-        return sanitize(podPublishedOn.strftime("%Y-%m-%dT%H-%M-%SZ") + "_" + self.configSection + "_" + pod.title + "." + podExtension)
-
-    def get_pod_file_extension(self, pod):
-        return pod.links[1]["href"].rpartition(".")[-1]
+        return sanitize(podExtension)
 
     def get_utc_date(self, date):
         return parse(date, tzinfos=self.timezone_info).astimezone(timezone('UTC'))
