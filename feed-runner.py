@@ -15,7 +15,7 @@ def main():
 
     for configSection in config.sections():
         if configSection != configKeys.SETTINGS_NAME:
-            update_last_processed_date(config, configSection, podcatcher(config[configKeys.SETTINGS_NAME], configSection, config[configSection]).get_new_pods());
+            update_last_processed_date(config, configSection, podcatcher(config[configKeys.SETTINGS_NAME], configSection, config[configSection]).get_new_pods())
 
 if __name__ == "__main__":
     main()

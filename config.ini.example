@@ -1,4 +1,5 @@
 [PodCatcher]
+loglevel = WARNING
 maxepisodestodownload = 1
 outputFolder = pods
 

@@ -1,4 +1,5 @@
 import feedparser
+import logging
 import os
 import requests
 
@@ -10,11 +11,27 @@ from pytz import timezone
 from sanitize_filename import sanitize
 import configKeys
 
+logLevels = {
+    'DEBUG': logging.DEBUG,
+    'INFO': logging.INFO,
+    'WARNING': logging.WARNING,
+    'ERROR': logging.ERROR,
+}
+
+logger = logging.getLogger("basic-logger")
+
 class podcatcher:
     def __init__(self, podConfig, configSection, configData):
         self.podCatcherConfig = podConfig
         self.configSection = configSection
         self.config = configData
+
+        logger.setLevel(logLevels.get(self.podCatcherConfig[configKeys.LOG_LEVEL], logging.ERROR))
+        ch = logging.StreamHandler()
+        ch.setLevel(logLevels.get(self.podCatcherConfig[configKeys.LOG_LEVEL], logging.ERROR))
+        ch.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        logger.addHandler(ch)
+
         try:
             self.maxEpisodesToDownload = int(self.podCatcherConfig[configKeys.MAX_EPISODES_TO_DOWNLOAD])
         except:
@@ -24,18 +41,18 @@ class podcatcher:
             try:
                 os.mkdir(os.path.join(self.podCatcherConfig[configKeys.OUTPUT]))
             except OSError as e:
-                print ("Creation of the directory %s failed" % self.podCatcherConfig[configKeys.OUTPUT], e.data)
+                logger.error(f"Creation of the directory {self.podCatcherConfig[configKeys.OUTPUT]} failed", e.data)
                 return
             else:
-                print ("Successfully created the directory %s " % self.podCatcherConfig[configKeys.OUTPUT])
+                logger.debug(f"Successfully created the directory {self.podCatcherConfig[configKeys.OUTPUT]}")
 
         if not os.path.exists(os.path.join(self.podCatcherConfig[configKeys.OUTPUT], self.configSection)):
             try:
                 os.mkdir(os.path.join(self.podCatcherConfig[configKeys.OUTPUT], self.configSection))
             except OSError as e:
-                print ("Creation of the directory %s failed" % self.configSection, e.data)
+                logger.error(f"Creation of the directory {self.configSection} failed", e.data)
             else:
-                print ("Successfully created the directory %s " % self.configSection)
+                logger.debug(f"Successfully created the directory {self.configSection}")
 
         PACIFIC = tz.gettz("America/Los_Angeles")
         self.timezone_info = {"PST": PACIFIC, "PDT": PACIFIC}
@@ -45,13 +62,13 @@ class podcatcher:
         lastProcessed = self.get_config_last_processed_date()
         podLastDownloaded = lastProcessed
 
-        print ("Downloading %s: " % self.configSection, end = '')
+        logger.info(f"Downloading {self.configSection}: ")
         podsDownloaded = 0
         for pod in reversed(feed.entries):
             podPublishedOn = self.get_utc_date(pod.published)
 
             if  podPublishedOn > lastProcessed and (self.maxEpisodesToDownload == 0 or podsDownloaded < self.maxEpisodesToDownload):
-                print (".", end = '')
+                logger.info(".")
 
                 try:
                     podAudioLink = self.get_pod_audio_link(pod)
@@ -64,22 +81,22 @@ class podcatcher:
                         break
 
                 except requests.exceptions.ConnectionError:
-                    print ("\nError: Request timedout: %s" % pod.title)
+                    logger.warning ("\nError: Request timedout: %s" % pod.title)
                     break
                 except Exception as e:
-                    print ("\nError: catching pod: %s" % pod.title)
-                    print(type(e))
-                    print(e)
+                    logger.error("\nError: catching pod: %s" % pod.title)
+                    logger.error(type(e))
+                    logger.error(e)
                     break
 
-        print (" | %d episodes downloaded\n" % podsDownloaded )
+        logger.info(f"{podsDownloaded} episodes downloaded\n")
         return podLastDownloaded
 
     def get_pod_audio_link(self, pod):
         for link in pod.links:
             if link.type == "audio/mpeg":
                 return link["href"]
-        print ("\nError: Finding Audio Link: %s" % pod.title)
+        logger.error(f"\nError: Finding Audio Link: {pod.title}")
 
     def get_pod_file_name(self, pod):
         podPublishedOn = self.get_utc_date(pod.published)

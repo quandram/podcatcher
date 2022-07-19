@@ -1,4 +1,5 @@
 SETTINGS_NAME = "PodCatcher"
+LOG_LEVEL = "loglevel"
 OUTPUT = "outputFolder"
 MAX_EPISODES_TO_DOWNLOAD = "maxepisodestodownload"
 FEED = "feed"
